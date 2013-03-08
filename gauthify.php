@@ -92,10 +92,8 @@ class GAuthify
                 }
                 $status_code = curl_getinfo($req, CURLINFO_HTTP_CODE);
                 $json_resp = json_decode($resp, true);
-                var_dump($status_code);
                 switch ($status_code) {
                         case 401:
-                            print('Here!');
                             throw new ApiKeyError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
                         case 402:
                             throw new RateLimitError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
