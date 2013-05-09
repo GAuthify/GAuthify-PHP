@@ -109,7 +109,7 @@ Errors
 --------------
 Up to-date json formatted errors can be grabbed from the server using:
 
-    auth_instance.api_errors()
+    auth_instance->api_errors()
 
 They should rarely change and will be backward compatible.
 
