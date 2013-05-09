@@ -61,7 +61,7 @@ class GAuthify
         $this->api_key = $api_key;
         $this->headers = array("Authorization: " . $api_key,
             'Content-type: application/json',
-            'User-Agent: GAuthify/v1.00 PHP/1.00'
+            'User-Agent: GAuthify-PHP/v1.27'
         );
         $this->access_points = array(
             'https://api.gauthify.com/v1/',
@@ -82,8 +82,8 @@ class GAuthify
                 $type = strtoupper($type);
                 $req = curl_init();
                 curl_setopt($req, CURLOPT_URL, $req_url);
-                curl_setopt($req, CURLOPT_POSTFIELDS, $params);
                 curl_setopt($req, CURLOPT_CUSTOMREQUEST, $type);
+                curl_setopt($req, CURLOPT_POSTFIELDS, http_build_query($params));
                 curl_setopt($req, CURLOPT_HTTPHEADER, $this->headers);
                 curl_setopt($req, CURLOPT_RETURNTRANSFER, 1);
                 $resp = curl_exec($req);
@@ -121,15 +121,40 @@ class GAuthify
     }
 
 
-    public function create_user($unique_id, $display_name)
+    public function create_user($unique_id, $display_name, $email = null, $phone_number = null)
     {
         /*
-         * Creates or upserts new user with a new secret key
+         * Creates new user (replaces with new if already exists)
          */
         $params = array('display_name' => $display_name);
+        if($email){
+            $params['email'] = $email;
+        }
+        if ($phone_number){
+            $params['phone_number'] = $phone_number;
+        }
         $url_addon = sprintf('users/%s/', $unique_id);
         return $this->request_handler('POST', $url_addon, $params);
 
+
+    }
+
+    public function update_user($unique_id, $email = null, $phone_number = null, $meta = null, $reset_key = false){
+        $params = array();
+        if($email){
+            $params['email'] = $email;
+        }
+        if ($phone_number){
+            $params['phone_number'] = $phone_number;
+        }
+        if($meta){
+            $params['meta'] = json_encode($meta);
+        }
+        if($reset_key){
+            $params['reset_key'] = 'true';
+        }
+        $url_addon = sprintf('users/%s/', $unique_id);
+        return $this->request_handler('PUT', $url_addon, $params);
 
     }
 
@@ -186,24 +211,49 @@ class GAuthify
         return $response['authenticated'];
     }
 
-    public function send_sms($unique_id, $phone_number)
-    {
+    public function get_user_by_token($token){
         /*
-         * Sends text message to phone number with the one time auth_code
+         * Returns a single user by ezGAuth token
          */
-
-        $url_addon = sprintf('users/%s/sms/%s', $unique_id, $phone_number);
+        $url_addon = sprintf('token/%s/', $token);
         return $this->request_handler('GET', $url_addon);
     }
 
-    public function send_email($unique_id, $email)
+    public function send_sms($unique_id, $phone_number = null)
     {
         /*
          * Sends text message to phone number with the one time auth_code
          */
-
-        $url_addon = sprintf('users/%s/email/%s', $unique_id, $email);
+        if ($phone_number){
+            $url_addon = sprintf('users/%s/sms/%s', $unique_id, $phone_number);
+        }
+        else{
+            $url_addon = sprintf('users/%s/sms/', $unique_id);
+        }
         return $this->request_handler('GET', $url_addon);
+    }
+
+    public function send_email($unique_id, $email = null)
+    {
+        /*
+         * Sends email  to email on file or provided with the one time auth_code
+         */
+        if($email){
+            $url_addon = sprintf('users/%s/email/%s', $unique_id, $email);
+        }
+        else{
+            $url_addon = sprintf('users/%s/email/', $unique_id);
+        }
+        return $this->request_handler('GET', $url_addon);
+    }
+
+    public function api_errors(){
+        /*
+         * Returns array containing api errors.
+         */
+        $url_addon = "errors/";
+        return $this->request_handler('GET', $url_addon);
+
     }
 
     public function quick_test($test_email = false, $test_number= false)
@@ -212,55 +262,94 @@ class GAuthify
          * Runs initial tests to make sure everything is working fine
          */
         $account_name = 'testuser@gauthify.com';
+
+        function success(){
+            print("Success \n");
+        }
         print("1) Testing Creating a User...");
-        $result = $this->create_user($account_name, $account_name);
+        $result = $this->create_user($account_name,
+            $account_name, $email='firsttest@gauthify.com',
+            $phone_number='0123456789');
         print_r($result);
-        print("Success \n");
+        assert($result['unique_id'] == $account_name);
+        assert($result['display_name'] == $account_name);
+        assert($result['email'] == 'firsttest@gauthify.com');
+        assert($result['phone_number'] == '0123456789');
+        success();
 
         print("2) Retrieving Created User...");
         $user = $this->get_user($account_name);
+        assert(is_array($user));
         print_r($user);
-        print("Success \n");
+        success();
 
         print("3) Retrieving All Users...");
         $result = $this->get_all_users();
-        print_r($result);
-        print("Success \n");
+        assert(is_array($result));
+        print_r($result);;
+        success();
 
         print("4) Bad Auth Code...");
         $result = $this->check_auth($account_name, '112345');
-        assert(!$result);
+        assert(is_bool($result));
         print_r($result);
-        print("Success \n");
+        success();
 
         print("5) Testing one time pass (OTP)....");
         $result = $this->check_auth($account_name, $user['otp']);
-        assert($result);
+        assert(is_bool($result));
         print_r($result);
-        if ($test_email){
-            print("5A) Testing email to " . $test_email);
+        if(!$result){
+            throw new ParameterError('Server error. OTP not working. Contact support@gauthify.com for help.', 500, '500', '');
+        }
+        success();
+        if($test_email){
+            print(sprintf("5A) Testing email to %s",$test_email));
             $result = $this->send_email($account_name, $test_email);
-            print $result;
-            print("Success \n");
+            print_r($result);
+            success();
         }
-        if ($test_number){
-            print("5B) Testing email to " . $test_number);
-            $result = $this->send_sms($account_name, $test_number);
-            print $result;
-            print("Success \n");
-        }
-        print("Success \n");
 
+        if($test_number){
+            print(sprintf("5B) Testing SMS to %s", $test_number));
+            $this->send_sms($account_name, $test_number);
+            success();
+        }
         print("6) Detection of provided auth...");
-        $result = $this->get_user($account_name, '112345');
+        $result = $this->get_user($account_name, 'test12');
         assert($result['provided_auth']);
         print_r($result);
-        print("Success \n");
+        success();
 
-        print("7) Deleting Created User...");
+        print("7) Testing updating email, phone, and meta");
+        $result = $this->update_user($account_name, $email='test@gauthify.com',
+            $phone_number='1234567890', $meta=array('a'=> 'b'));
+        print_r($result);
+        assert($result['email'] == 'test@gauthify.com');
+        assert($result['phone_number'] == '1234567890');
+        assert($result['meta']['a'] == 'b');
+        $current_key = $result['key'];
+        success();
+
+        print("8) Testing key/secret");
+        $result = $this->update_user($account_name, null, null, null, true);
+        print($current_key);
+        print($result['key']);
+        assert($result['key'] != $current_key);
+        success();
+
+        print("9) Deleting Created User...");
         $result = $this->delete_user($account_name);
-        print("Success \n");
-        print("Tests Look Good.");
+        assert(is_bool($result));
+        success();
+
+        print("10) Testing backup server...");
+        $current = $this->access_points[0];
+        $this->access_points[0] = 'https://blah.gauthify.com/v1/';
+        $result = $this->get_all_users();
+        $this->access_points[0] = $current;
+        print_r($result);
+        success();
 
     }
 
