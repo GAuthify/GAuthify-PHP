@@ -61,7 +61,7 @@ class GAuthify
         $this->api_key = $api_key;
         $this->headers = array("Authorization: " . $api_key,
             'Content-type: application/json',
-            'User-Agent: GAuthify-PHP/v1.27'
+            'User-Agent: GAuthify-PHP/v1.27.1'
         );
         $this->access_points = array(
             'https://api.gauthify.com/v1/',
@@ -86,6 +86,7 @@ class GAuthify
                 curl_setopt($req, CURLOPT_POSTFIELDS, http_build_query($params));
                 curl_setopt($req, CURLOPT_HTTPHEADER, $this->headers);
                 curl_setopt($req, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($req, CURLOPT_TIMEOUT, 5);
                 $resp = curl_exec($req);
                 if (!$resp) {
                     throw new Exception('Execution Error', 100);
