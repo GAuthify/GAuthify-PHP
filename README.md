@@ -30,24 +30,27 @@ First instantiate a GAuthify object:
 
 ####Create User:####
 
-    auth_instance->create_user(<unique_id>, <display_name>, <email> *optional, <phone_number> *optional)
+    auth_instance->create_user(<unique_id>, <display_name>, <email> *optional, <sms_number> *optional, <voice_number> *optional)
 
 * unique_id: An id to identify user. Could be the PK used for the user in your db.
 * display_name: Name that will be displayed on the library
-* phone_number: A valid mobile phone number for sms (Currently US only!)
 * email: A valid email
+* sms_number: A valid mobile phone number for sms (Currently US only!)
+* voice_number: A valid phone number for calls (Currently US only!)
+* meta: A dictionary of key/value pairs to be added to meta data
 * Returns: The user hash or raises Error
 
 The user hash returned will have parameters outlined on the GAuthify.com dashboard page. You can show the user the QR code to scan in their google authenticator applicatoin or you can link/iframe the instructions url.
 
 ####Update User:####
 
-    auth_instance->update_user(<unique_id>, email=None, phone_number=None, meta=None, reset_key=None)
+    auth_instance->update_user(<unique_id>, <email> *optional, <sms_number> *optional, <voice_number> *optional, <reset_key> *optional)
 
 * unique_id: An id to identify user. Could be the PK used for the user in your db.
 * display_name: Name that will be displayed on the library
-* phone_number: A valid mobile phone number for sms (Currently US only!)
 * email: A valid email
+* sms_number: A valid mobile phone number for sms (Currently US only!)
+* voice_number: A valid phone number for calls (Currently US only!)
 * meta: A dictionary of key/value pairs to be added to meta data
 * reset_key: If set to any in ['true' ,'t', '1'] the Google Authenticator secret key will be reset to a new one.
 * Returns: The updated user hash or raises Error
@@ -88,21 +91,28 @@ The user hash returned will have parameters outlined on the GAuthify.com dashboa
 * safe_mode: If set to true, all exceptions during the request will be suppressed and the check will return True. This essentially temporary bypasses 2-factor authentication if there is a unusual server error.
 * Return: True/False (bool) or raises Error
 
-
-####Send SMS:####
-
-    auth_instance->send_sms(<unique_id>, <phone_number> *optional)
-
-* unique_id: An id to identify user. Could be the PK used for the user in your db.
-* phone_number: A valid us phone number for sms(Currently US only!)
-* Returns: User hash or raises Error
-
 ####Send Email:####
 
-    auth_instance->send_email(<email>, <phone_number> *optional)
+    auth_instance->send_email(<unique_id>, <email> *optional)
 
 * unique_id: An id to identify user. Could be the PK used for the user in your db.
 * email: A valid email
+* Returns: User hash or raises Error
+
+####Send SMS:####
+
+    auth_instance->send_sms(<unique_id>, <sms_number> *optional)
+
+* unique_id: An id to identify user. Could be the PK used for the user in your db.
+* sms_number: A valid us phone number for sms(Currently US only!)
+* Returns: User hash or raises Error
+
+####Send Voice:####
+
+    auth_instance->send_voice(<unique_id>, <voice_number> *optional)
+
+* unique_id: An id to identify user. Could be the PK used for the user in your db.
+* voice_number: A valid us phone number for phone calls(Currently US only!)
 * Returns: User hash or raises Error
 
 Errors
@@ -133,4 +143,5 @@ The following errors extend GAuthifyError:
 * RateLimitError - Wraps 402 responses (Plan limits, etc)
 * ParameterError - Wraps 406 response (Bad formatted unique_id, sms, phone number ,etc)
 * NotFoundError - Wraps 404 error (requesting a unique_id that doesnt exist)
+* ConflictError - Wraps 409 error for existing resources.
 * ServerError - Wraps 500 and other server errors
