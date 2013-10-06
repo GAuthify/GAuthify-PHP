@@ -29,6 +29,13 @@ class ParameterError extends GAuthifyError
      */
 }
 
+class ConflictError extends GAuthifyError
+{
+    /*
+     * Raised when a conflicting result exists (e.g post an existing user)
+     */
+}
+
 class NotFoundError extends GAuthifyError
 {
     /*
@@ -59,13 +66,12 @@ class GAuthify
     public function __construct($api_key)
     {
         $this->api_key = $api_key;
-        $this->headers = array("Authorization: " . $api_key,
-            'Content-type: application/json',
-            'User-Agent: GAuthify-PHP/v1.27.1'
+        $this->headers = array("Authorization: " . 'Basic ' . base64_encode(':' . $api_key),
+            'User-Agent: GAuthify-PHP/v2.0'
         );
         $this->access_points = array(
-            'https://api.gauthify.com/v1/',
-            'https://backup.gauthify.com/v1/'
+            'https://alpha.gauthify.com/v1/',
+            'https://beta.gauthify.com/v1/'
         );
 
     }
@@ -94,21 +100,23 @@ class GAuthify
                 $status_code = curl_getinfo($req, CURLINFO_HTTP_CODE);
                 $json_resp = json_decode($resp, true);
                 switch ($status_code) {
-                        case 401:
-                            throw new ApiKeyError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
-                        case 402:
-                            throw new RateLimitError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
-                        case 406:
-                            throw new ParameterError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
-                        case 404:
-                            throw new NotFoundError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
+                    case 401:
+                        throw new ApiKeyError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
+                    case 402:
+                        throw new RateLimitError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
+                    case 406:
+                        throw new ParameterError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
+                    case 404:
+                        throw new NotFoundError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
+                    case 409:
+                        throw new ConflictError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
                 }
                 if (!$json_resp) {
                     throw new Exception("JSON parse error. Likely header size issue.", 100);
                 }
                 break;
             } catch (Exception $e) {
-                if($e->getCode() != 100){
+                if ($e->getCode() != 100) {
                     throw $e;
                 }
                 if ($base_url == end($this->access_points)) {
@@ -122,36 +130,46 @@ class GAuthify
     }
 
 
-    public function create_user($unique_id, $display_name, $email = null, $phone_number = null)
+    public function create_user($unique_id, $display_name, $email = null, $sms_number = null, $voice_number = null, $meta = null)
     {
         /*
          * Creates new user (replaces with new if already exists)
          */
-        $params = array('display_name' => $display_name);
-        if($email){
+        $params = array('unique_id' => $unique_id, 'display_name' => $display_name);
+        if ($email) {
             $params['email'] = $email;
         }
-        if ($phone_number){
-            $params['phone_number'] = $phone_number;
+        if ($sms_number) {
+            $params['sms_number'] = $sms_number;
         }
-        $url_addon = sprintf('users/%s/', $unique_id);
+        if ($voice_number) {
+            $params['voice_number'] = $voice_number;
+        }
+        if ($meta) {
+            $params['meta'] = json_encode($meta);
+        }
+        $url_addon = 'users/';
         return $this->request_handler('POST', $url_addon, $params);
 
 
     }
 
-    public function update_user($unique_id, $email = null, $phone_number = null, $meta = null, $reset_key = false){
+    public function update_user($unique_id, $email = null, $sms_number = null, $voice_number = null, $meta = null, $reset_key = false)
+    {
         $params = array();
-        if($email){
+        if ($email) {
             $params['email'] = $email;
         }
-        if ($phone_number){
-            $params['phone_number'] = $phone_number;
+        if ($sms_number) {
+            $params['sms_number'] = $sms_number;
         }
-        if($meta){
+        if ($voice_number) {
+            $params['voice_number'] = $voice_number;
+        }
+        if ($meta) {
             $params['meta'] = json_encode($meta);
         }
-        if($reset_key){
+        if ($reset_key) {
             $params['reset_key'] = 'true';
         }
         $url_addon = sprintf('users/%s/', $unique_id);
@@ -174,20 +192,17 @@ class GAuthify
         /*
          * Retrieves a list of all users
          */
-        return $this->request_handler('GET', $url_addon='users/');
+        return $this->request_handler('GET', $url_addon = 'users/');
 
     }
 
-    public function get_user($unique_id, $auth_code = null)
+    public function get_user($unique_id)
     {
         /*
-         * Returns a single user, checks OTP if provided
+         * Returns a single user
          */
-        if ($auth_code != null) {
-            $url_addon = sprintf('users/%s/check/%s', $unique_id, $auth_code);
-        } else {
-            $url_addon = sprintf('users/%s/', $unique_id);
-        }
+
+        $url_addon = sprintf('users/%s/', $unique_id);
         return $this->request_handler('GET', $url_addon);
     }
 
@@ -198,10 +213,9 @@ class GAuthify
          * Checks authcode returns true/false depending on correctness
          */
         try {
-            $response = $this->get_user($unique_id, $auth_code);
-            if ($response['provided_auth'] != true) {
-                throw new ParameterError('auth_code not detected by server. Check if params sent via get request.', 500, '500', '');
-            }
+            $url_addon = 'check/';
+            $params = array('unique_id' => $unique_id, 'auth_code' => $auth_code);
+            $response = $this->request_handler('POST', $url_addon, $params);
         } catch (Exception $e) {
             if ($safe_mode) {
                 return true;
@@ -212,43 +226,57 @@ class GAuthify
         return $response['authenticated'];
     }
 
-    public function get_user_by_token($token){
+    public function get_user_by_token($token)
+    {
         /*
          * Returns a single user by ezGAuth token
          */
-        $url_addon = sprintf('token/%s/', $token);
-        return $this->request_handler('GET', $url_addon);
-    }
-
-    public function send_sms($unique_id, $phone_number = null)
-    {
-        /*
-         * Sends text message to phone number with the one time auth_code
-         */
-        if ($phone_number){
-            $url_addon = sprintf('users/%s/sms/%s', $unique_id, $phone_number);
-        }
-        else{
-            $url_addon = sprintf('users/%s/sms/', $unique_id);
-        }
-        return $this->request_handler('GET', $url_addon);
+        $url_addon = 'token/';
+        $params = array('token' => token);
+        return $this->request_handler('POST', $url_addon, $params);
     }
 
     public function send_email($unique_id, $email = null)
     {
         /*
-         * Sends email  to email on file or provided with the one time auth_code
+         * Sends email with the one time auth_code
          */
-        if($email){
-            $url_addon = sprintf('users/%s/email/%s', $unique_id, $email);
+        $url_addon = 'email/';
+        $params = array('unique_id' => $unique_id);
+        if ($email) {
+            $params['email'] = $email;
         }
-        else{
-            $url_addon = sprintf('users/%s/email/', $unique_id);
-        }
-        return $this->request_handler('GET', $url_addon);
+        return $this->request_handler('POST', $url_addon, $params);
     }
 
-    public function api_errors(){
+    public function send_sms($unique_id, $sms_number = null)
+    {
+        /*
+         * Sends text message to phone number with the one time auth_code
+         */
+        $url_addon = 'sms/';
+        $params = array('unique_id' => $unique_id);
+        if ($sms_number) {
+            $params['sms_number'] = $sms_number;
+        }
+        return $this->request_handler('POST', $url_addon, $params);
+    }
+
+    public function send_voice($unique_id, $voice_number = null)
+    {
+        /*
+         * Sends email with the one time auth_code
+         */
+        $url_addon = 'voice/';
+        $params = array('unique_id' => $unique_id);
+        if ($voice_number) {
+            $params['voice_number'] = $voice_number;
+        }
+        return $this->request_handler('POST', $url_addon, $params);
+    }
+
+    public function api_errors()
+    {
         /*
          * Returns array containing api errors.
          */
@@ -257,25 +285,36 @@ class GAuthify
 
     }
 
-    public function quick_test($test_email = false, $test_number= false)
+    public function quick_test($test_email = false, $test_sms_number = false, $test_voice_number = false)
     {
         /*
          * Runs initial tests to make sure everything is working fine
          */
         $account_name = 'testuser@gauthify.com';
-
-        function success(){
+        //Setup
+        try{
+            $this->delete_user($account_name);
+        }
+        catch(NotFoundError $e){}
+        function success()
+        {
             print("Success \n");
         }
+
         print("1) Testing Creating a User...");
-        $result = $this->create_user($account_name,
-            $account_name, $email='firsttest@gauthify.com',
-            $phone_number='0123456789');
+        $result = $this->create_user(
+            $account_name,
+            $account_name,
+            $email = 'firsttest@gauthify.com',
+            $sms_number = '9162627232',
+            $voice_number = '9162627234'
+        );
         print_r($result);
         assert($result['unique_id'] == $account_name);
         assert($result['display_name'] == $account_name);
         assert($result['email'] == 'firsttest@gauthify.com');
-        assert($result['phone_number'] == '0123456789');
+        assert($result['sms_number'] == '+19162627232');
+        assert($result['voice_number'] == '+19162627234');
         success();
 
         print("2) Retrieving Created User...");
@@ -300,51 +339,52 @@ class GAuthify
         $result = $this->check_auth($account_name, $user['otp']);
         assert(is_bool($result));
         print_r($result);
-        if(!$result){
+        if (!$result) {
             throw new ParameterError('Server error. OTP not working. Contact support@gauthify.com for help.', 500, '500', '');
         }
         success();
-        if($test_email){
-            print(sprintf("5A) Testing email to %s",$test_email));
+        if ($test_email) {
+            print(sprintf("5A) Testing email to %s", $test_email));
             $result = $this->send_email($account_name, $test_email);
             print_r($result);
             success();
         }
 
-        if($test_number){
-            print(sprintf("5B) Testing SMS to %s", $test_number));
-            $this->send_sms($account_name, $test_number);
+        if ($test_sms_number) {
+            print(sprintf("5B) Testing SMS to %s", $test_sms_number));
+            $this->send_sms($account_name, $test_sms_number);
             success();
         }
-        print("6) Detection of provided auth...");
-        $result = $this->get_user($account_name, 'test12');
-        assert($result['provided_auth']);
-        print_r($result);
-        success();
+         if ($test_voice_number) {
+            print(sprintf("5C) Testing call to %s", $test_voice_number));
+            $this->send_voice($account_name, $test_voice_number);
+            success();
+        }
 
-        print("7) Testing updating email, phone, and meta");
-        $result = $this->update_user($account_name, $email='test@gauthify.com',
-            $phone_number='1234567890', $meta=array('a'=> 'b'));
+        print("6) Testing updating email, phone, and meta");
+        $result = $this->update_user($account_name, $email = 'test@gauthify.com',
+            $sms_number = '9162627234', $sms_number = '9162627235', $meta = array('a' => 'b'));
         print_r($result);
         assert($result['email'] == 'test@gauthify.com');
-        assert($result['phone_number'] == '1234567890');
+        assert($result['sms_number'] == '+19162627234');
+        assert($result['voice_number'] == '+19162627235');
+        print_r($result);
         assert($result['meta']['a'] == 'b');
         $current_key = $result['key'];
         success();
 
-        print("8) Testing key/secret");
-        $result = $this->update_user($account_name, null, null, null, true);
+        print("7) Testing key/secret");
+        $result = $this->update_user($account_name, null, null, null, null, true);
         print($current_key);
         print($result['key']);
         assert($result['key'] != $current_key);
         success();
 
-        print("9) Deleting Created User...");
+        print("8) Deleting Created User...");
         $result = $this->delete_user($account_name);
-        assert(is_bool($result));
         success();
 
-        print("10) Testing backup server...");
+        print("9) Testing backup server...");
         $current = $this->access_points[0];
         $this->access_points[0] = 'https://blah.gauthify.com/v1/';
         $result = $this->get_all_users();
@@ -353,5 +393,4 @@ class GAuthify
         success();
 
     }
-
 }
