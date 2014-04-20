@@ -66,14 +66,11 @@ class GAuthify
     public function __construct($api_key)
     {
         $this->api_key = $api_key;
-        $this->headers = array("Authorization: " . 'Basic ' . base64_encode(':' . $api_key),
-            'User-Agent: GAuthify-PHP/v2.0'
-        );
+        $this->headers = array('User-Agent: GAuthify-PHP/v2.0');
         $this->access_points = array(
             'https://alpha.gauthify.com/v1/',
             'https://beta.gauthify.com/v1/'
         );
-
     }
 
 
@@ -87,6 +84,8 @@ class GAuthify
                 $req_url = $base_url . $url_addon;
                 $type = strtoupper($type);
                 $req = curl_init();
+                curl_setopt($req, CURLOPT_USERPWD, ":" . $this->api_key);
+                curl_setopt($req, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
                 curl_setopt($req, CURLOPT_URL, $req_url);
                 curl_setopt($req, CURLOPT_CUSTOMREQUEST, $type);
                 curl_setopt($req, CURLOPT_POSTFIELDS, http_build_query($params));
