@@ -232,7 +232,7 @@ class GAuthify
          * Returns a single user by ezGAuth token
          */
         $url_addon = 'token/';
-        $params = array('token' => token);
+        $params = array('token' => $token);
         return $this->request_handler('POST', $url_addon, $params);
     }
 
