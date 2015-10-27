@@ -2,7 +2,11 @@
 namespace GAuthify;
 use Exception;
 
-class GAuthifyError extends Exception
+class GAuthifyException extends Exception
+{
+}
+
+class GAuthifyError extends GAuthifyException
 {
     /*
      * All errors

@@ -38,7 +38,7 @@ class GAuthify
                 curl_setopt($req, CURLOPT_TIMEOUT, 5);
                 $resp = curl_exec($req);
                 if (!$resp) {
-                    throw new Exception('Execution Error', 100);
+                    throw new GAuthifyException('Execution Error', 100);
                 }
                 $status_code = curl_getinfo($req, CURLINFO_HTTP_CODE);
                 $json_resp = json_decode($resp, true);
@@ -55,7 +55,7 @@ class GAuthify
                         throw new ConflictError($json_resp['error_message'], $status_code, $json_resp['error_code'], $resp);
                 }
                 if (!$json_resp) {
-                    throw new Exception("JSON parse error. Likely header size issue.", 100);
+                    throw new GAuthifyException("JSON parse error. Likely header size issue.", 100);
                 }
                 break;
             } catch (Exception $e) {
