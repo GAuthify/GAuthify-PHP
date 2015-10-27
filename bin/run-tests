@@ -1,0 +1,14 @@
+#!/usr/bin/env php
+<?php
+if (empty($argv[1]))
+{
+    echo "run-tests apikey\n";
+    exit(1);
+}
+
+require __DIR__.'/../vendor/autoload.php';
+
+use GAuthify\GAuthifyTest;
+
+$test = new GAuthifyTest($argv[1]);
+$test->quick_test();
