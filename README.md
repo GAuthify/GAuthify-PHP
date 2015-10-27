@@ -4,18 +4,26 @@ GAuthify-PHP
 
 This is the PHP API Client for [GAuthify](https://www.gauthify.com). The GAuthify REST api helps websites quickly add multi-factor authentication through Google Authenticator, SMS, and Email. This package is a simple wrapper around that api.
 
+It has been forked by Joshua Eichorn @Pagely(https://pagely.com) to be namespaced and installable with composer
 
 Installation
 --------------
-This library requires and automatically installs requests.
 
-To install simply add gauthify.php into your project directory.
+Install using composer
+
+    composer require jeichorn/GAuthify
+
+Include vendor/autoload.php, and use the class
+
+    include 'vendor/autoload.php';
+    use GAuthify\GAuthify;
 
 To run a quick test to make sure everything works fine run:
 
-    require_once("gauthify.php");
-    $gauthify = new GAuthify(<api_key>)
-    $gauthify->quick_test(<test_email>(optional), <test_number>(optional))
+    include 'vendor/autoload.php';
+    use GAuthify\GAuthify;
+    $gauthify = new GAuthify(<api_key>);
+    $gauthify->quick_test(<test_email>(optional), <test_number>(optional));
 
 Usage
 --------------
@@ -24,7 +32,8 @@ First get an API key by signing up for an account [here](http://www.gauthify.com
 
 First instantiate a GAuthify object:
 
-    require_once("gauthify.php");
+    include 'vendor/autoload.php';
+    use GAuthify\GAuthify;
     $auth_instance = new GAuthify(<api_key>);
 
 
@@ -125,7 +134,7 @@ They should rarely change and will be backward compatible.
 
 The primary error class is GAuthifyError, it can be used as follows:
 
-    require('gauthify.php')
+    use GAuthify\GAuthifyError;
 
     try{
         <code here>

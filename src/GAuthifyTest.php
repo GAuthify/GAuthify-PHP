@@ -1,5 +1,5 @@
 <?php
-namespace GAuthify\GAuthify;
+namespace GAuthify;
 
 class GAuthifyTest
 {

@@ -4,13 +4,17 @@
     "license": "MIT",
     "authors": [
         {
+            "name": "Joshua Eichorn",
+            "email": "joshua.eichorn@pagely.com"
+        },
+        {
             "name": "Parham Negahdar",
             "email": "pnegahdar@example.com"
         }
     ],
     "autoload": {
         "psr-4": {
-            "GAuthify\\GAuthify\\": "src/"
+            "GAuthify\\": "src/"
         },
         "classmap": [
             "src/exceptions.php"
