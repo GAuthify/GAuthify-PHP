@@ -1,6 +1,6 @@
 GAuthify-PHP
 ===============
-[Direct link to library](https://github.com/GAuthify/GAuthify-PHP).
+[Direct link to library](https://github.com/jeichorn/GAuthify-PHP).
 
 This is the PHP API Client for [GAuthify](https://www.gauthify.com). The GAuthify REST api helps websites quickly add multi-factor authentication through Google Authenticator, SMS, and Email. This package is a simple wrapper around that api.
 
@@ -11,7 +11,7 @@ Installation
 
 Install using composer
 
-    composer require jeichorn/GAuthify
+    composer require jeichorn/g-authify-php
 
 Include vendor/autoload.php, and use the class
 
