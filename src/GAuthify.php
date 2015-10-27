@@ -1,61 +1,6 @@
 <?php
-class GAuthifyError extends Exception
-{
-    /*
-     * All errors
-     */
-    public function __construct($msg, $http_status, $error_code, $response_body)
-    {
-        $this->msg = $msg;
-        $this->http_status = $http_status;
-        $this->error_code = $error_code;
-        $this->response_body = $response_body;
-        parent::__construct($msg, $http_status);
-    }
-
-}
-
-class ApiKeyError extends GAuthifyError
-{
-    /*
-     * Raised when API Key is incorrect
-     */
-}
-
-class ParameterError extends GAuthifyError
-{
-    /*
-     * Raised when submitting bad parameters or missing parameters
-     */
-}
-
-class ConflictError extends GAuthifyError
-{
-    /*
-     * Raised when a conflicting result exists (e.g post an existing user)
-     */
-}
-
-class NotFoundError extends GAuthifyError
-{
-    /*
-     * Raised when a result isn't found for the parameters provided.
-     */
-}
-
-class ServerError extends GAuthifyError
-{
-    /*
-     * Raised for any other error that the server can give, mainly a 500
-     */
-}
-
-class RateLimitError extends GAuthifyError
-{
-    /*
-     * Raised when API limit reached either by lack of payment or membership limit
-     */
-}
+namespace GAuthify\GAuthify;
+use Exception;
 
 class GAuthify
 {
@@ -73,9 +18,7 @@ class GAuthify
             'https://alpha.gauthify.com/v1/',
             'https://beta.gauthify.com/v1/'
         );
-
     }
-
 
     private function request_handler($type, $url_addon = '', $params = array())
     {
@@ -282,115 +225,6 @@ class GAuthify
          */
         $url_addon = "errors/";
         return $this->request_handler('GET', $url_addon);
-
-    }
-
-    public function quick_test($test_email = false, $test_sms_number = false, $test_voice_number = false)
-    {
-        /*
-         * Runs initial tests to make sure everything is working fine
-         */
-        $account_name = 'testuser@gauthify.com';
-        //Setup
-        try{
-            $this->delete_user($account_name);
-        }
-        catch(NotFoundError $e){}
-        function success()
-        {
-            print("Success \n");
-        }
-
-        print("1) Testing Creating a User...");
-        $result = $this->create_user(
-            $account_name,
-            $account_name,
-            $email = 'firsttest@gauthify.com',
-            $sms_number = '9162627232',
-            $voice_number = '9162627234'
-        );
-        print_r($result);
-        assert($result['unique_id'] == $account_name);
-        assert($result['display_name'] == $account_name);
-        assert($result['email'] == 'firsttest@gauthify.com');
-        assert($result['sms_number'] == '+19162627232');
-        assert($result['voice_number'] == '+19162627234');
-        success();
-
-        print("2) Retrieving Created User...");
-        $user = $this->get_user($account_name);
-        assert(is_array($user));
-        print_r($user);
-        success();
-
-        print("3) Retrieving All Users...");
-        $result = $this->get_all_users();
-        assert(is_array($result));
-        print_r($result);;
-        success();
-
-        print("4) Bad Auth Code...");
-        $result = $this->check_auth($account_name, '112345');
-        assert(is_bool($result));
-        print_r($result);
-        success();
-
-        print("5) Testing one time pass (OTP)....");
-        $result = $this->check_auth($account_name, $user['otp']);
-        assert(is_bool($result));
-        print_r($result);
-        if (!$result) {
-            throw new ParameterError('Server error. OTP not working. Contact support@gauthify.com for help.', 500, '500', '');
-        }
-        success();
-        if ($test_email) {
-            print(sprintf("5A) Testing email to %s", $test_email));
-            $result = $this->send_email($account_name, $test_email);
-            print_r($result);
-            success();
-        }
-
-        if ($test_sms_number) {
-            print(sprintf("5B) Testing SMS to %s", $test_sms_number));
-            $this->send_sms($account_name, $test_sms_number);
-            success();
-        }
-         if ($test_voice_number) {
-            print(sprintf("5C) Testing call to %s", $test_voice_number));
-            $this->send_voice($account_name, $test_voice_number);
-            success();
-        }
-
-        print("6) Testing updating email, phone, and meta");
-        $result = $this->update_user($account_name, $email = 'test@gauthify.com',
-            $sms_number = '9162627234', $sms_number = '9162627235', $meta = array('a' => 'b'));
-        print_r($result);
-        assert($result['email'] == 'test@gauthify.com');
-        assert($result['sms_number'] == '+19162627234');
-        assert($result['voice_number'] == '+19162627235');
-        print_r($result);
-        assert($result['meta']['a'] == 'b');
-        $current_key = $result['key'];
-        success();
-
-        print("7) Testing key/secret");
-        $result = $this->update_user($account_name, null, null, null, null, true);
-        print($current_key);
-        print($result['key']);
-        assert($result['key'] != $current_key);
-        success();
-
-        print("8) Deleting Created User...");
-        $result = $this->delete_user($account_name);
-        success();
-
-        print("9) Testing backup server...");
-        $current = $this->access_points[0];
-        $this->access_points[0] = 'https://blah.gauthify.com/v1/';
-        $result = $this->get_all_users();
-        $this->access_points[0] = $current;
-        print_r($result);
-        success();
 
     }
 }

@@ -1,0 +1,20 @@
+{
+    "name": "GAuthify/GAuthify-php",
+    "description": "GAuthify PHP Client Library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Parham Negahdar",
+            "email": "pnegahdar@example.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "GAuthify\\GAuthify\\": "src/"
+        },
+        "classmap": [
+            "src/exceptions.php"
+        ]
+    },
+    "require": {}
+}
